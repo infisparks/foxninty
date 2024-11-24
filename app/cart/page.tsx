@@ -2,11 +2,25 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { Minus, Plus, X, Gift } from 'lucide-react';
-import GiftModal from '../components/GiftModal';
+import GiftModal from '@/components/GiftModal';
 
-const cartItems = [
+type Gift = {
+  name: string;
+  value: number;
+  image: string;
+};
+
+type CartItem = {
+  id: number;
+  name: string;
+  price: number;
+  image: string;
+  quantity: number;
+  gift?: Gift;
+};
+
+const cartItems: CartItem[] = [
   {
     id: 1,
     name: "Royal Oak Chronograph",
@@ -16,8 +30,8 @@ const cartItems = [
     gift: {
       name: "Premium AirPods Pro",
       value: 249,
-      image: "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?auto=format&fit=crop&q=80"
-    }
+      image: "https://images.unsplash.com/photo-1572569511254-d8f925fe2cbb?auto=format&fit=crop&q=80",
+    },
   },
   {
     id: 2,
@@ -28,27 +42,27 @@ const cartItems = [
     gift: {
       name: "Limited Edition T-Shirt",
       value: 99,
-      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80"
-    }
-  }
+      image: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80",
+    },
+  },
 ];
 
 export default function CartPage() {
-  const [items, setItems] = useState(cartItems);
+  const [items, setItems] = useState<CartItem[]>(cartItems);
   const [giftModalOpen, setGiftModalOpen] = useState(false);
-  const [selectedGift, setSelectedGift] = useState(null);
+  const [selectedGift, setSelectedGift] = useState<Gift | null>(null);
 
-  const updateQuantity = (id, newQuantity) => {
-    setItems(items.map(item => 
+  const updateQuantity = (id: number, newQuantity: number) => {
+    setItems(items.map((item) =>
       item.id === id ? { ...item, quantity: Math.max(1, newQuantity) } : item
     ));
   };
 
-  const removeItem = (id) => {
-    setItems(items.filter(item => item.id !== id));
+  const removeItem = (id: number) => {
+    setItems(items.filter((item) => item.id !== id));
   };
 
-  const openGiftModal = (gift) => {
+  const openGiftModal = (gift: Gift) => {
     setSelectedGift(gift);
     setGiftModalOpen(true);
   };
@@ -71,14 +85,15 @@ export default function CartPage() {
                 <h2 className="font-semibold">{item.name}</h2>
                 <p className="text-gray-600">${item.price.toLocaleString()}</p>
                 {item.gift && (
-                  <button 
-                    className="text-purple-600 text-sm flex items-center mt-1"
-                    onClick={() => openGiftModal(item.gift)}
-                  >
-                    <Gift className="w-4 h-4 mr-1" />
-                    View Gift
-                  </button>
-                )}
+  <button
+    className="text-purple-600 text-sm flex items-center mt-1"
+    onClick={() => openGiftModal(item.gift as Gift)}
+  >
+    <Gift className="w-4 h-4 mr-1" />
+    View Gift
+  </button>
+)}
+
               </div>
               <div className="flex items-center">
                 <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-1">
@@ -125,4 +140,3 @@ export default function CartPage() {
     </div>
   );
 }
-

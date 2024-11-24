@@ -42,11 +42,11 @@ const brands = [
 
 export default function BrandShowcase() {
   const [currentBrand, setCurrentBrand] = useState(0);
-  const [ref, inView] = useInView({
+  const [ref] = useInView({
     triggerOnce: true,
     threshold: 0.1
   });
-
+  
   const nextBrand = () => {
     setCurrentBrand((prev) => (prev + 1) % brands.length);
   };
