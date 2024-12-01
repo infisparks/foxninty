@@ -5,6 +5,7 @@ export interface Gift {
 }
 
 export interface Product {
+  rating: number;
   id: number;
   name: string;
   category: string;
