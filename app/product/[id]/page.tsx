@@ -1,109 +1,127 @@
-'use client'
+'use client';
 
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { ref, get, push } from 'firebase/database'
-import Image from 'next/image'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Star, Gift, ArrowLeft, X, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react'
-import { database } from '@/lib/firebaseClient'
+import { useRouter, useParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { ref, get, push } from 'firebase/database';
+import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Star,
+  Gift,
+  ArrowLeft,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle,
+} from 'lucide-react';
+import { database } from '@/lib/firebaseClient';
+
+// ----- Type Definitions -----
 
 interface Gift {
-  image: string
-  name: string
-  value: number
+  image: string;
+  name: string;
+  value: number;
 }
 
 interface Review {
-  id: string
-  user: string
-  rating: number
-  comment: string
-  date: string
+  id: string;
+  user: string;
+  rating: number;
+  comment: string;
+  date: string;
 }
 
 interface Product {
-  id: string
-  bulletPoints: string[]
-  category: string
-  description: string
-  gift?: Gift
-  images: string[]
-  isNew: boolean
-  name: string
-  numReviewsToShow: number
-  price: number
-  warranty: string
-  reviews?: Review[]
+  id: string;
+  bulletPoints: string[];
+  category: string;
+  description: string;
+  gift?: Gift;
+  images: string[];
+  isNew: boolean;
+  name: string;
+  numReviewsToShow: number;
+  price: number;
+  warranty: string;
+  reviews?: Review[];
 }
 
-interface ProductDetailProps {
-  params: {
-    id: string
-  }
-}
+// ----- Component -----
 
-export default function ProductDetail({ params }: ProductDetailProps) {
-  const router = useRouter()
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isGiftModalOpen, setIsGiftModalOpen] = useState<boolean>(false)
-  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState<boolean>(false)
-  const [isReviewFormOpen, setIsReviewFormOpen] = useState<boolean>(false)
-  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0)
-  const [randomReviews, setRandomReviews] = useState<Review[]>([])
+export default function ProductDetail() {
+  const router = useRouter();
+  const params = useParams();
+  const { id } = params; // Extract 'id' from route parameters
+
+  // ----- State Variables -----
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isGiftModalOpen, setIsGiftModalOpen] = useState<boolean>(false);
+  const [isReviewsModalOpen, setIsReviewsModalOpen] = useState<boolean>(false);
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState<boolean>(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState<number>(0);
+  const [randomReviews, setRandomReviews] = useState<Review[]>([]);
   const [newReview, setNewReview] = useState<Omit<Review, 'id' | 'date'>>({
     user: '',
     rating: 5,
-    comment: ''
-  })
+    comment: '',
+  });
 
+  // ----- Data Fetching -----
   useEffect(() => {
     const fetchProduct = async () => {
       try {
-        const productRef = ref(database, `products/${params.id}`)
-        const snapshot = await get(productRef)
+        const productRef = ref(database, `products/${id}`);
+        const snapshot = await get(productRef);
         if (snapshot.exists()) {
-          const data = snapshot.val()
+          const data = snapshot.val();
           const loadedProduct: Product = {
-            id: params.id,
+            id,
             ...data,
             reviews: data.reviews ? Object.values(data.reviews) : [],
-          }
-          setProduct(loadedProduct)
+          };
+          setProduct(loadedProduct);
           if (loadedProduct.reviews && loadedProduct.reviews.length > 0) {
-            const shuffled = loadedProduct.reviews.sort(() => 0.5 - Math.random())
-            setRandomReviews(shuffled.slice(0, 3))
+            const shuffled = loadedProduct.reviews.sort(() => 0.5 - Math.random());
+            setRandomReviews(shuffled.slice(0, 3));
           }
         } else {
-          setError("Product not found.")
+          setError('Product not found.');
         }
       } catch (err) {
-        console.error("Error fetching product:", err)
-        setError("Failed to load product details.")
+        console.error('Error fetching product:', err);
+        setError('Failed to load product details.');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
+    };
+
+    if (id) {
+      fetchProduct();
     }
+  }, [id]);
 
-    fetchProduct()
-  }, [params.id])
-
+  // ----- Image Carousel -----
   useEffect(() => {
-    let shineInterval: NodeJS.Timeout
+    let shineInterval: NodeJS.Timeout;
     if (product) {
       shineInterval = setInterval(() => {
-        setCurrentImageIndex((prevIndex) => (prevIndex + 1) % product.images.length)
-      }, 2000)
+        setCurrentImageIndex(
+          (prevIndex) => (prevIndex + 1) % product.images.length
+        );
+      }, 2000);
     }
-    return () => clearInterval(shineInterval)
-  }, [product])
+    return () => clearInterval(shineInterval);
+  }, [product]);
+
+  // ----- Event Handlers -----
 
   const handlePurchase = () => {
-    if (!product) return
+    if (!product) return;
 
-    const phoneNumber = "9958399157"
+    const phoneNumber = '9958399157';
     const message = `Hello, I would like to purchase the following watch:
 
 *Name:* ${product.name}
@@ -111,71 +129,82 @@ export default function ProductDetail({ params }: ProductDetailProps) {
 *Description:* ${product.description}
 *Warranty:* ${product.warranty}
 
-Please let me know the next steps. Thank you!`
+Please let me know the next steps. Thank you!`;
 
-    const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
-    window.open(whatsappURL, '_blank')
-  }
+    const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(
+      message
+    )}`;
+    window.open(whatsappURL, '_blank');
+  };
 
   const handleNextImage = () => {
     if (product && product.images.length > 0) {
-      setCurrentImageIndex((prevIndex) => (prevIndex + 1) % product.images.length)
+      setCurrentImageIndex(
+        (prevIndex) => (prevIndex + 1) % product.images.length
+      );
     }
-  }
+  };
 
   const handlePrevImage = () => {
     if (product && product.images.length > 0) {
-      setCurrentImageIndex((prevIndex) => (prevIndex - 1 + product.images.length) % product.images.length)
+      setCurrentImageIndex(
+        (prevIndex) =>
+          (prevIndex - 1 + product.images.length) % product.images.length
+      );
     }
-  }
+  };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!product) return
+    e.preventDefault();
+    if (!product) return;
 
     const newReviewData: Review = {
       ...newReview,
       id: Date.now().toString(),
-      date: new Date().toISOString()
-    }
+      date: new Date().toISOString(),
+    };
 
     try {
-      const reviewsRef = ref(database, `products/${product.id}/reviews`)
-      await push(reviewsRef, newReviewData)
+      const reviewsRef = ref(database, `products/${product.id}/reviews`);
+      await push(reviewsRef, newReviewData);
 
       // Update local state
-      setProduct(prevProduct => ({
+      setProduct((prevProduct) => ({
         ...prevProduct!,
-        reviews: [...(prevProduct!.reviews || []), newReviewData]
-      }))
+        reviews: [...(prevProduct!.reviews || []), newReviewData],
+      }));
 
       // Reset form and close modal
-      setNewReview({ user: '', rating: 5, comment: '' })
-      setIsReviewFormOpen(false)
+      setNewReview({ user: '', rating: 5, comment: '' });
+      setIsReviewFormOpen(false);
 
       // Update random reviews
-      setRandomReviews(prevReviews => {
-        const updatedReviews = [...prevReviews, newReviewData]
-        return updatedReviews.sort(() => 0.5 - Math.random()).slice(0, 3)
-      })
+      setRandomReviews((prevReviews) => {
+        const updatedReviews = [...prevReviews, newReviewData];
+        return updatedReviews
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 3);
+      });
     } catch (error) {
-      console.error("Error submitting review:", error)
-      alert("Failed to submit review. Please try again.")
+      console.error('Error submitting review:', error);
+      alert('Failed to submit review. Please try again.');
     }
-  }
+  };
+
+  // ----- Conditional Rendering -----
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-100">
         <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
-    )
+    );
   }
 
   if (error || !product) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
-        <p className="text-red-500 text-xl mb-4">{error || "Product not found."}</p>
+        <p className="text-red-500 text-xl mb-4">{error || 'Product not found.'}</p>
         <button
           onClick={() => router.push('/')}
           className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-300 flex items-center"
@@ -184,8 +213,10 @@ Please let me know the next steps. Thank you!`
           Go Back to Home
         </button>
       </div>
-    )
+    );
   }
+
+  // ----- Main Render -----
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -205,6 +236,7 @@ Please let me know the next steps. Thank you!`
 
         <div className="bg-white shadow-xl rounded-lg overflow-hidden">
           <div className="md:flex">
+            {/* ----- Product Image Section ----- */}
             <div className="md:flex-shrink-0 relative">
               <motion.div
                 whileHover={{ scale: 1.05 }}
@@ -238,6 +270,8 @@ Please let me know the next steps. Thank you!`
                 </div>
               )}
             </div>
+
+            {/* ----- Product Details Section ----- */}
             <div className="p-8 flex flex-col flex-grow">
               <div className="uppercase tracking-wide text-sm text-indigo-500 font-semibold flex items-center">
                 <CheckCircle className="w-5 h-5 mr-1" />
@@ -246,9 +280,11 @@ Please let me know the next steps. Thank you!`
               <h1 className="mt-1 text-4xl font-extrabold text-gray-900 leading-tight">
                 {product.name}
               </h1>
-              <p className="mt-2 text-gray-600 flex-grow">{product.description || 'No description available'}</p>
+              <p className="mt-2 text-gray-600 flex-grow">
+                {product.description || 'No description available'}
+              </p>
 
-              {/* Bullet Points */}
+              {/* ----- Bullet Points ----- */}
               {product.bulletPoints && product.bulletPoints.length > 0 && (
                 <ul className="mt-4 list-disc list-inside text-gray-700">
                   {product.bulletPoints.map((point, index) => (
@@ -260,7 +296,7 @@ Please let me know the next steps. Thank you!`
                 </ul>
               )}
 
-              {/* Warranty */}
+              {/* ----- Warranty Information ----- */}
               {product.warranty && (
                 <div className="mt-4 text-gray-700 flex items-center">
                   <CheckCircle className="w-5 h-5 text-indigo-500 mr-2" />
@@ -268,7 +304,7 @@ Please let me know the next steps. Thank you!`
                 </div>
               )}
 
-              {/* Ratings */}
+              {/* ----- Ratings ----- */}
               <div className="mt-4 flex items-center">
                 <div className="flex items-center">
                   {[...Array(5)].map((_, i) => (
@@ -287,7 +323,7 @@ Please let me know the next steps. Thank you!`
                 </span>
               </div>
 
-              {/* Price and New Arrival Badge */}
+              {/* ----- Price and New Arrival Badge ----- */}
               <div className="mt-4 flex items-center justify-between">
                 <span className="text-3xl font-bold text-gray-900">
                   ${product.price.toLocaleString()}
@@ -300,7 +336,7 @@ Please let me know the next steps. Thank you!`
                 )}
               </div>
 
-              {/* Purchase Watch Button */}
+              {/* ----- Purchase Button ----- */}
               <motion.button
                 whileTap={{ scale: 0.95 }}
                 onClick={handlePurchase}
@@ -310,10 +346,7 @@ Please let me know the next steps. Thank you!`
                 Purchase Watch
               </motion.button>
 
-              {/* Add to Cart Confirmation Removed */}
-              {/* The "Add to Cart" related states and UI have been removed as per the new functionality */}
-              
-              {/* View Gift Button */}
+              {/* ----- View Gift Button ----- */}
               {product.gift && product.gift.name && (
                 <motion.div
                   className="mt-4"
@@ -333,7 +366,7 @@ Please let me know the next steps. Thank you!`
             </div>
           </div>
 
-          {/* Features Section */}
+          {/* ----- Features Section ----- */}
           {product.bulletPoints && product.bulletPoints.length > 0 && (
             <div className="px-8 py-6 bg-white">
               <h2 className="text-2xl font-bold text-gray-900 mb-4 flex items-center">
@@ -351,7 +384,7 @@ Please let me know the next steps. Thank you!`
             </div>
           )}
 
-          {/* Reviews Section */}
+          {/* ----- Reviews Section ----- */}
           <div className="px-8 py-6 bg-gray-50">
             <h2 className="text-2xl font-semibold text-gray-900 mb-4 flex items-center">
               <Star className="w-6 h-6 text-yellow-400 mr-2" />
@@ -361,22 +394,31 @@ Please let me know the next steps. Thank you!`
               <>
                 <div className="space-y-4">
                   {randomReviews.map((review) => (
-                    <div key={review.id} className="p-4 bg-white rounded-md shadow">
+                    <div
+                      key={review.id}
+                      className="p-4 bg-white rounded-md shadow"
+                    >
                       <div className="flex items-center mb-2">
-                        <strong className="text-gray-800">{review.user}</strong>
+                        <strong className="text-gray-800">
+                          {review.user}
+                        </strong>
                         <span className="ml-2 text-yellow-400 flex">
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
                               className={`w-4 h-4 ${
-                                i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                                i < review.rating
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300'
                               }`}
                             />
                           ))}
                         </span>
                       </div>
                       <p className="text-gray-700">{review.comment}</p>
-                      <span className="text-sm text-gray-500">{new Date(review.date).toLocaleDateString()}</span>
+                      <span className="text-sm text-gray-500">
+                        {new Date(review.date).toLocaleDateString()}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -391,7 +433,9 @@ Please let me know the next steps. Thank you!`
                 )}
               </>
             ) : (
-              <p className="text-gray-600">No reviews yet. Be the first to review this product!</p>
+              <p className="text-gray-600">
+                No reviews yet. Be the first to review this product!
+              </p>
             )}
             <button
               onClick={() => setIsReviewFormOpen(true)}
@@ -404,7 +448,7 @@ Please let me know the next steps. Thank you!`
         </div>
       </motion.div>
 
-      {/* Gift Modal */}
+      {/* ----- Gift Modal ----- */}
       <AnimatePresence>
         {isGiftModalOpen && product.gift && (
           <>
@@ -442,14 +486,16 @@ Please let me know the next steps. Thank you!`
                   />
                 </div>
                 <p className="text-lg font-medium">{product.gift.name}</p>
-                <p className="text-gray-600">Value: ${product.gift.value.toLocaleString()}</p>
+                <p className="text-gray-600">
+                  Value: ${product.gift.value.toLocaleString()}
+                </p>
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Reviews Modal */}
+      {/* ----- Reviews Modal ----- */}
       <AnimatePresence>
         {isReviewsModalOpen && product.reviews && (
           <>
@@ -479,22 +525,31 @@ Please let me know the next steps. Thank you!`
                 </h3>
                 <div className="space-y-4 max-h-80 overflow-y-auto">
                   {product.reviews.map((review) => (
-                    <div key={review.id} className="p-4 bg-gray-50 rounded-md">
+                    <div
+                      key={review.id}
+                      className="p-4 bg-gray-50 rounded-md"
+                    >
                       <div className="flex items-center mb-2">
-                        <strong className="text-gray-800">{review.user}</strong>
+                        <strong className="text-gray-800">
+                          {review.user}
+                        </strong>
                         <span className="ml-2 text-yellow-400 flex">
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
                               className={`w-4 h-4 ${
-                                i < review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                                i < review.rating
+                                  ? 'text-yellow-400 fill-current'
+                                  : 'text-gray-300'
                               }`}
                             />
                           ))}
                         </span>
                       </div>
                       <p className="text-gray-700">{review.comment}</p>
-                      <span className="text-sm text-gray-500">{new Date(review.date).toLocaleDateString()}</span>
+                      <span className="text-sm text-gray-500">
+                        {new Date(review.date).toLocaleDateString()}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -504,7 +559,7 @@ Please let me know the next steps. Thank you!`
         )}
       </AnimatePresence>
 
-      {/* Review Form Modal */}
+      {/* ----- Review Form Modal ----- */}
       <AnimatePresence>
         {isReviewFormOpen && (
           <>
@@ -534,7 +589,10 @@ Please let me know the next steps. Thank you!`
                 </h3>
                 <form onSubmit={handleReviewSubmit}>
                   <div className="mb-4">
-                    <label htmlFor="user" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="user"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Your Name
                     </label>
                     <input
@@ -542,20 +600,30 @@ Please let me know the next steps. Thank you!`
                       id="user"
                       name="user"
                       value={newReview.user}
-                      onChange={(e) => setNewReview({ ...newReview, user: e.target.value })}
+                      onChange={(e) =>
+                        setNewReview({ ...newReview, user: e.target.value })
+                      }
                       required
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     />
                   </div>
                   <div className="mb-4">
-                    <label htmlFor="rating" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="rating"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Rating
                     </label>
                     <select
                       id="rating"
                       name="rating"
                       value={newReview.rating}
-                      onChange={(e) => setNewReview({ ...newReview, rating: parseInt(e.target.value) })}
+                      onChange={(e) =>
+                        setNewReview({
+                          ...newReview,
+                          rating: parseInt(e.target.value),
+                        })
+                      }
                       required
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     >
@@ -567,7 +635,10 @@ Please let me know the next steps. Thank you!`
                     </select>
                   </div>
                   <div className="mb-4">
-                    <label htmlFor="comment" className="block text-sm font-medium text-gray-700">
+                    <label
+                      htmlFor="comment"
+                      className="block text-sm font-medium text-gray-700"
+                    >
                       Your Review
                     </label>
                     <textarea
@@ -575,7 +646,9 @@ Please let me know the next steps. Thank you!`
                       name="comment"
                       rows={4}
                       value={newReview.comment}
-                      onChange={(e) => setNewReview({ ...newReview, comment: e.target.value })}
+                      onChange={(e) =>
+                        setNewReview({ ...newReview, comment: e.target.value })
+                      }
                       required
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     ></textarea>
@@ -593,7 +666,7 @@ Please let me know the next steps. Thank you!`
         )}
       </AnimatePresence>
 
-      {/* Shine Effect Styles */}
+      {/* ----- Shine Effect Styles ----- */}
       <style jsx>{`
         .shine-effect {
           position: absolute;
@@ -624,5 +697,5 @@ Please let me know the next steps. Thank you!`
         }
       `}</style>
     </div>
-  )
+  );
 }
